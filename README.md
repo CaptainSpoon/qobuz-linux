@@ -112,9 +112,10 @@ ELECTRON_RUN_AS_NODE=1 $E native/test/gapless.js $A a.flac
 
 ## Known gaps
 
-- **Early stage.** Sign-in with a real account works; playback of real Qobuz
-  tracks is not yet confirmed. The engine was tested with synthetic FLAC
-  streams that mimic the app's buffer/HLS behaviour.
+- Tested with a real account (2026-11-18): sign-in, 16-bit/44.1 kHz and
+  24-bit/96 kHz streaming, seeking (including into not-yet-downloaded HLS
+  segments), gapless track transitions and the device re-opening at the
+  track's native rate.
 - No exclusive/bit-perfect ALSA `hw:` mode; output goes through the sound server.
 - Device list: "System default" + sound-server sinks; device-change detection
   polls every ~3 s.

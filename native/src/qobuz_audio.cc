@@ -210,6 +210,7 @@ struct Slot {
   std::vector<std::pair<size_t, size_t>> vmap;  // (realStart, len)
   size_t vsize = 0, vcursor = 0;
   bool starved = false;
+  size_t starveReal = 0;  // real byte offset of the last starved read
 
   ma_decoder dec;
   bool decInit = false;
@@ -253,6 +254,7 @@ ma_result vsRead(ma_decoder* d, void* out, size_t n, size_t* nread) {
       size_t availEnd = size_t(s->dataRanges->contiguousEnd(double(real)));
       if (availEnd <= real) {
         s->starved = true;
+        s->starveReal = real;
         g_starvedReads++;
         break;
       }
@@ -610,7 +612,11 @@ class Player {
 
   // ---------------- seeking (mtx held)
   // Try to position slot at `sec`. Returns true if done, false if must wait.
-  bool trySeek(Slot* s, double sec) {
+  // `fresh`: rebuild the decoder before seeking. Needed after a starved read:
+  // dr_flac has already parsed the next frame header when the read comes up
+  // short, so its idea of the current PCM frame is one FLAC frame ahead and a
+  // seek relative to that state silently drops a frame.
+  bool trySeek(Slot* s, double sec, bool fresh = false) {
     if (!s->opened || !s->sampleRate) return false;
     uint64_t target = secToFrame(sec, s->sampleRate);
     if (s->totalFrames && target >= s->totalFrames) target = s->totalFrames - 1;
@@ -632,7 +638,7 @@ class Player {
         s->vsize = s->size;
         if (!slotInitDecoder(s)) return false;
       }
-      if (!s->decInit && !slotInitDecoder(s)) return false;
+      if ((fresh || !s->decInit) && !slotInitDecoder(s)) return false;
       s->starved = false;
       if (ma_decoder_seek_to_pcm_frame(&s->dec, target) != MA_SUCCESS || s->starved) {
         s->starved = false;
@@ -697,8 +703,10 @@ class Player {
         }
         if (s->pendingSeek) {
           if (trySeek(s, s->pendingSeekSec)) s->pendingSeek = false;
-        } else if (s->needResync && s->decInit) {
-          if (trySeek(s, double(s->posFrames) / std::max(1u, s->sampleRate))) s->needResync = false;
+        } else if (s->needResync && s->decInit &&
+                   (!s->isStream || s->dataRanges->contiguousEnd(double(s->starveReal)) > double(s->starveReal))) {
+          // (retry only once bytes have arrived where the last read stalled)
+          if (trySeek(s, double(s->posFrames) / std::max(1u, s->sampleRate), true)) s->needResync = false;
         }
       }
       Slot* c = slots[0].get();

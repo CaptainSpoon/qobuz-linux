@@ -135,9 +135,13 @@ test('decoder running into a gap re-syncs without losing samples (tiny read marg
   t.open();
   p.play();
   const r0 = p.__state().resyncs;
-  const out = pump(p, f.frames + 96000, {
-    chunk: 777,
-    between: (i) => feed(200 + ((i * 104729) % 1100)), // slower than playback
+  // Feed 20-80% (avg ~50%) of what one chunk consumes, so the decoder keeps
+  // running into the edge of the data regardless of how well the fixture
+  // compresses. (A fixed byte count was faster than playback for some encoders.)
+  const chunk = 777, perChunk = (N / f.frames) * chunk;
+  const out = pump(p, 3 * f.frames, {
+    chunk,
+    between: (i) => feed(Math.max(1, Math.round(perChunk * (0.2 + 0.6 * (((i * 104729) % 1000) / 1000))))),
   });
   const resyncs = p.__state().resyncs - r0;
   assert.ok(resyncs > 0, `re-sync path exercised (${resyncs} times)`);
@@ -348,15 +352,22 @@ test('device list, selection while playing, unknown device, hotplug notification
 
   const calls = [];
   p.setDeviceChangedListener((e) => calls.push(e));
+  // Notifications go through a ThreadSafeFunction, i.e. libuv's async queue;
+  // a single setImmediate tick does not guarantee delivery, so wait for it.
+  const settle = async (n, ms = 1000) => {
+    const end = Date.now() + ms;
+    while (calls.length < n && Date.now() < end) await new Promise((r) => setTimeout(r, 5));
+    await new Promise((r) => setTimeout(r, 20)); // let any extra (wrong) call land too
+  };
   p.__maintain(true);
-  await new Promise((r) => setImmediate(r));
+  await settle(1);
   assert.equal(calls.length, 1, 'initial notification');
   p.__maintain(true);
-  await new Promise((r) => setImmediate(r));
+  await settle(2, 100);
   assert.equal(calls.length, 1, 'no notification without change');
   p.__setFakeDevices(['DAC One', 'Headphones', 'USB Speaker']);
   p.__maintain(true);
-  await new Promise((r) => setImmediate(r));
+  await settle(2);
   assert.equal(calls.length, 2, 'hotplug notification');
   assert.deepEqual(calls[1].deviceList.map((d) => d.name).slice(-1), ['USB Speaker']);
   assert.equal(calls[1].currentDevice.name, 'DAC One');
