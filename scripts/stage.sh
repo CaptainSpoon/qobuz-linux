@@ -9,9 +9,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 STAGE="$ROOT/dist/stage/app"
 
 [ -f "$ROOT/native/build/Release/qobuz_audio.node" ] || {
-  echo "building native addon..."
-  (cd "$ROOT/native" && ../build/node_modules/.bin/node-gyp rebuild --target=32.3.3 --arch=x64 \
-     --dist-url=https://electronjs.org/headers >/dev/null)
+  "$ROOT/scripts/build-native.sh"
 }
 
 rm -rf "$ROOT/dist/stage"

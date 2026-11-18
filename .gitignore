@@ -9,3 +9,4 @@ native/node_modules
 *.exe
 *.nupkg
 build/*.zip
+native/build-native.log

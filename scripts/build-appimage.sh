@@ -31,9 +31,7 @@ if [ ! -x "$B/node_modules/electron/dist/electron" ]; then
 fi
 
 # Native audio engine (juce.node replacement)
-(cd "$ROOT/native" && ln -sfn ../build/node_modules node_modules && \
-  ../build/node_modules/.bin/node-gyp rebuild --target=32.3.3 --arch=x64 \
-    --dist-url=https://electronjs.org/headers >/dev/null)
+"$ROOT/scripts/build-native.sh"
 
 "$ROOT/scripts/stage.sh"
 (cd "$B" && ./node_modules/.bin/electron-builder --config electron-builder.yml --linux AppImage)
