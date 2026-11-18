@@ -1,0 +1,11 @@
+# Fetched / generated at build time — never commit Qobuz's code or binaries
+upstream/
+vendor/
+dist/
+build/node_modules/
+native/build/
+native/node_modules
+*.AppImage
+*.exe
+*.nupkg
+build/*.zip

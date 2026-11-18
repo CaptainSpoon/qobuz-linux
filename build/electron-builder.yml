@@ -1,0 +1,45 @@
+# AppImage packaging for the Linux proof-of-concept Qobuz client.
+appId: com.qobuz.desktop.linux-poc
+productName: Qobuz
+executableName: qobuz
+copyright: Qobuz app (c) Qobuz; Linux shims by qobuz-linux contributors. Built locally for personal use.
+
+directories:
+  app: ../dist/stage/app
+  output: ../dist
+  buildResources: ../build
+
+electronVersion: 32.3.3
+electronDist: node_modules/electron/dist
+
+# Upstream ships resources/app unpacked and loads juce.node via
+# process.dlopen(__dirname + "/juce.node"); keep the same layout.
+asar: false
+npmRebuild: false
+nodeGypRebuild: false
+buildDependenciesFromSource: false
+includeSubNodeModules: true
+publish: null
+
+files:
+  - "**/*"
+
+linux:
+  target:
+    - target: AppImage
+      arch: [x64]
+  category: Audio
+  icon: ../upstream/app/static/icons/prod/icon.png
+  synopsis: Qobuz desktop client (unofficial Linux build)
+  description: >-
+    The official Qobuz desktop app (Electron) repackaged for Linux, with the
+    Windows-only juce.node audio engine replaced by a miniaudio-based module.
+  desktop:
+    Name: Qobuz
+    Comment: Hi-res music streaming
+    Categories: AudioVideo;Audio;Player;
+    MimeType: x-scheme-handler/qobuzapp;
+    StartupWMClass: Qobuz
+
+appImage:
+  artifactName: Qobuz-${version}-linux-x86_64-poc.AppImage
